@@ -47,7 +47,7 @@ public:
   }
 
   template <class Func>
-  decltype(auto) call(Func f)
+  auto call(Func f)
   {
     return call(f, Dummy<T, Args...>());  
   }
@@ -149,7 +149,7 @@ private:
   }
 
   template <class Func, class T2>
-  decltype(auto) call(Func &f, Dummy<T2>)
+  auto call(Func &f, Dummy<T2>)
   {
     if (tag == 0) {
       return f(*(T2*)data);
@@ -159,7 +159,7 @@ private:
   }
 
   template <class Func, class T2, class ...Args2>
-  decltype(auto) call(Func &f, Dummy<T2, Args2...>)
+  auto call(Func &f, Dummy<T2, Args2...>)
   {
     if (tag == sizeof...(Args2)) {
       return f(*(T2*)data);
