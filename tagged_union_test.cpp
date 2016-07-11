@@ -36,7 +36,27 @@ int main()
 {
   using std::string;
 
-  TaggedUnion<char, double, Foo, std::string, int> u(8.5);
+  TaggedUnion<char, double, Foo, string, int> u(8.5);
+
+  size_t max_align = alignof(char);
+  if (max_align < alignof(double)) max_align = alignof(double);
+  if (max_align < alignof(Foo)) max_align = alignof(Foo);
+  if (max_align < alignof(string)) max_align = alignof(string);
+  if (max_align < alignof(int)) max_align = alignof(int);
+  assert(max_align == alignof(decltype(u)));
+  assert(sizeof(u) % max_align == 0);
+
+  size_t max_size = sizeof(char);
+  if (max_size < sizeof(double)) max_size = sizeof(double);
+  if (max_size < sizeof(Foo)) max_size = sizeof(Foo);
+  if (max_size < sizeof(string)) max_size = sizeof(string);
+  if (max_size < sizeof(int)) max_size = sizeof(int);
+  size_t expected_size = max_size + sizeof(int);
+  if (expected_size % max_align != 0) {
+    expected_size += max_align - expected_size % max_align;
+  }
+  assert(expected_size == sizeof(u));
+
 
   // u.reset(short(1)); // compile error
   // u.get<short>() = 7; // exception thrown
