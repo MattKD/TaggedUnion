@@ -70,7 +70,8 @@ public:
   U& get() const
   {
     if (tag == GetTag<U, T, Args...>::tag) {
-      return *(U*)data;
+      U *u = (U*)data;
+      return *u;
     } else {
       throw std::runtime_error("Union:get<T> called with wrong current type");
     }
@@ -79,7 +80,8 @@ public:
   template <class U>
   U& unsafeGet() const
   {
-    return *(U*)data;
+    U *u = (U*)data;
+    return *u;
   }
 
 private:
@@ -152,7 +154,8 @@ private:
   auto call(Func &f, Dummy<T2>)
   {
     if (tag == 0) {
-      return f(*(T2*)data);
+      T2 *t2 = (T2*)data;
+      return f(*t2);
     } else {
       throw std::runtime_error("Union is in an invalid state");
     }
@@ -162,7 +165,8 @@ private:
   auto call(Func &f, Dummy<T2, Args2...>)
   {
     if (tag == sizeof...(Args2)) {
-      return f(*(T2*)data);
+      T2 *t2 = (T2*)data;
+      return f(*t2);
     } else {
       return call(f, Dummy<Args2...>());
     }
@@ -172,7 +176,8 @@ private:
   void release(Dummy<T2>)
   {
     if (tag == 0) {
-      ((T2*)data)->~T2();
+      T2 *t2 = (T2*)data;
+      t2->~T2();
       tag = -1; // invalid state
     }
   }
@@ -181,7 +186,8 @@ private:
   void release(Dummy<T2, Args2...>)
   {
     if (tag == sizeof...(Args2)) {
-      ((T2*)data)->~T2();
+      T2 *t2 = (T2*)data;
+      t2->~T2();
       tag = -1; // invalid state
     } else {
       release(Dummy<Args2...>());
