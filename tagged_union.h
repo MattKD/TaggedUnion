@@ -3,14 +3,23 @@
 
 #include <utility>
 #include <stdexcept>
+#include <type_traits>
 
 template <class T, class ...Args>
 class TaggedUnion {
-public:
   template <class U>
-  TaggedUnion(const U &val) : tag{GetTag<U, T, Args...>::tag}
+  struct IsNotSame {
+    static const bool value = 
+      !std::is_same<typename std::decay<U>::type, TaggedUnion>::value;
+  };
+
+public:
+  template <class U, 
+    typename std::enable_if<IsNotSame<U>::value>::type* = nullptr>
+  explicit TaggedUnion(U &&val)
+    : tag{GetTag<U, T, Args...>::tag}
   {
-    new (data) U(val);
+    new (data) U(std::forward<U>(val));
   }
 
   TaggedUnion(const TaggedUnion &u)
@@ -18,7 +27,7 @@ public:
     copy(u, Dummy<T, Args...>()); 
   }
 
-  TaggedUnion(TaggedUnion &&u)
+  TaggedUnion(TaggedUnion &&u) 
   {
     move(std::move(u), Dummy<T, Args...>()); 
   }
@@ -217,7 +226,6 @@ private:
   struct MaxAlign<align, T2> {
     static const int value = align < alignof(T2) ? alignof(T2) : align;
   };
-
 
   alignas(MaxAlign<alignof(T), Args...>::value) 
     char data[MaxSize<sizeof(T), Args...>::value];
