@@ -62,10 +62,10 @@ public:
   }
 
   template <class U>
-  void reset(const U &val)
+  void reset(U &&val)
   {
     release(Dummy<T, Args...>());
-    new (data) U(val);
+    new (data) U(std::forward<U>(val));
     tag = GetTag<U, T, Args...>::tag;
   }
 
