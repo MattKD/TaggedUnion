@@ -1,5 +1,3 @@
-#include "tagged_union.h"
-
 void errorTest();
 void taggedUnionPerfTest(int num_objects);
 void unsafeUnionPerfTest(int num_objects);
@@ -9,7 +7,7 @@ int main()
 {
   errorTest();
 
-  const int num_objects = 500000;
+  const int num_objects = 10000000;
   taggedUnionPerfTest(num_objects);
   unsafeUnionPerfTest(num_objects);
   subtypePerfTest(num_objects);
