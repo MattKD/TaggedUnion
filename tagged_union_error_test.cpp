@@ -1,6 +1,8 @@
 #include "tagged_union.h"
 #include <string>
 #include <iostream>
+#include <memory>
+#include <vector>
 
 static int Foo_count = 0;
 struct Foo {
@@ -53,6 +55,25 @@ void logError_(bool expr, const char *msg, const char *file, int line)
 void errorTest()
 {
   using std::string;
+
+  {
+    // does not compile with move only types (unique_ptr)
+    /*
+    using std::unique_ptr;
+    TaggedUnion<unique_ptr<int>, unique_ptr<double>> 
+      u(unique_ptr<int>(new int(3)));
+    auto u2 = std::move(u);
+    */
+
+    // doesnt' compile because move ctor is not noexcept
+    //std::vector<TaggedUnion<unique_ptr<int>, unique_ptr<double>>> us; 
+
+    // check if can compile with lvalue ref to ctor
+    Foo f(1,2);
+    TaggedUnion<char, double, Foo, string, int> u3(f);
+  }
+
+
   error_found = false;
   TaggedUnion<char, double, Foo, string, int> u(8.5);
 
