@@ -6,6 +6,11 @@
 static int Foo_count = 0;
 struct Foo {
   Foo(int a, int b) : a{a}, b{b} { ++Foo_count; }
+  Foo(Foo &&f) : a{f.a}, b{f.b} 
+  { 
+    f.a = f.b = 0; 
+    ++Foo_count; 
+  }
   Foo(const Foo &f) : a{f.a}, b{f.b} 
   { 
     if (a == -1 && b == -1) {
@@ -13,6 +18,7 @@ struct Foo {
     }
     ++Foo_count;
   }
+
   ~Foo() { --Foo_count; }
   int a, b;
 };
@@ -81,7 +87,6 @@ void errorTest()
   assert(u.get<Foo>().a == 2 && u.get<Foo>().b == 3);
   assert(u.unsafeGet<Foo>().a == 2 && u.unsafeGet<Foo>().b == 3);
 
-
   u.reset(string("hello world"));
   assert(Foo_count == 0); // decremented in Foo dtor
   assert(u.call(Func()) == StringType);
@@ -89,36 +94,36 @@ void errorTest()
   assert(u.get<string>() == string("hello world"));
   assert(u.unsafeGet<string>() == string("hello world"));
 
-  //TaggedUnion<char, double, Foo, string, int> u2(std::move(u));
-  auto u2 = std::move(u);
-  assert(u.call(Func()) == StringType);
-  assert(u.isType<string>());
-  assert(u.get<string>() == string());
-  assert(u.unsafeGet<string>() == string());
-  assert(u2.call(Func()) == StringType);
-  assert(u2.isType<string>());
-  assert(u2.get<string>() == string("hello world"));
-  assert(u2.unsafeGet<string>() == string("hello world"));
+  u.reset(Foo(5,4));
+  auto u2 = std::move(u); // u's Foo.x and Foo.y should be 0 after move
+  assert(u.call(Func()) == FooType);
+  assert(u.isType<Foo>());
+  assert(u.get<Foo>().a == 0 && u.get<Foo>().b == 0);
+  assert(u.unsafeGet<Foo>().a == 0 && u.unsafeGet<Foo>().b == 0);
+  assert(u2.call(Func()) == FooType);
+  assert(u2.isType<Foo>());
+  assert(u2.get<Foo>().a == 5 && u2.get<Foo>().b == 4);
+  assert(u2.unsafeGet<Foo>().a == 5 && u2.unsafeGet<Foo>().b == 4);
 
-  u = std::move(u2);
-  assert(u.call(Func()) == StringType);
-  assert(u.isType<string>());
-  assert(u.get<string>() == string("hello world"));
-  assert(u.unsafeGet<string>() == string("hello world"));
-  assert(u2.call(Func()) == StringType);
-  assert(u2.isType<string>());
-  assert(u2.get<string>() == string());
-  assert(u2.unsafeGet<string>() == string());
+  u = std::move(u2); // u2's Foo.x and Foo.y should be 0 after move
+  assert(u.call(Func()) == FooType);
+  assert(u.isType<Foo>());
+  assert(u.get<Foo>().a == 5 && u.get<Foo>().b == 4);
+  assert(u.unsafeGet<Foo>().a == 5 && u.unsafeGet<Foo>().b == 4);
+  assert(u2.call(Func()) == FooType);
+  assert(u2.isType<Foo>());
+  assert(u2.get<Foo>().a == 0 && u2.get<Foo>().b == 0);
+  assert(u2.unsafeGet<Foo>().a == 0 && u2.unsafeGet<Foo>().b == 0);
 
-  u2 = u;
-  assert(u.call(Func()) == StringType);
-  assert(u.isType<string>());
-  assert(u.get<string>() == string("hello world"));
-  assert(u.unsafeGet<string>() == string("hello world"));
-  assert(u2.call(Func()) == StringType);
-  assert(u2.isType<string>());
-  assert(u2.get<string>() == string("hello world"));
-  assert(u2.unsafeGet<string>() == string("hello world"));
+  u2 = u; // u and u2's Foo.x and Foo.y should be 5,4 after assign
+  assert(u.call(Func()) == FooType);
+  assert(u.isType<Foo>());
+  assert(u.get<Foo>().a == 5 && u.get<Foo>().b == 4);
+  assert(u.unsafeGet<Foo>().a == 5 && u.unsafeGet<Foo>().b == 4);
+  assert(u2.call(Func()) == FooType);
+  assert(u2.isType<Foo>());
+  assert(u2.get<Foo>().a == 5 && u2.get<Foo>().b == 4);
+  assert(u2.unsafeGet<Foo>().a == 5 && u2.unsafeGet<Foo>().b == 4);
 
   try {
     u.get<int>() = 0; // will throw
@@ -127,7 +132,8 @@ void errorTest()
 
   try {
     // exception in copy ctor, leaving u in an invalid state
-    u.reset(Foo(-1,-1)); 
+    Foo f(-1, -1);
+    u.reset(f); 
     assert(false);
   } catch (...) {  }
 
