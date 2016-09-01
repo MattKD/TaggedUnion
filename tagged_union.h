@@ -62,11 +62,11 @@ public:
   }
 
   template <class U>
-  void reset(U &&val)
+  void reset(const U &val)
   {
     release(Dummy<T, Args...>());
-    new (data) std::remove_reference<U>::type(std::forward<U>(val));
-    tag = GetTag<std::remove_reference<U>::type, T, Args...>::tag;
+    new (data) U(val);
+    tag = GetTag<U, T, Args...>::tag;
   }
 
   template <class U>
