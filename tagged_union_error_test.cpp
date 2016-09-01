@@ -1,5 +1,4 @@
 #include "tagged_union.h"
-#include <cassert>
 #include <string>
 #include <iostream>
 
@@ -39,9 +38,22 @@ struct Func {
   TypeResult operator()(std::string &s) { return StringType; }
 };
 
+static bool error_found = false;
+void logError_(bool expr, const char *msg, const char *file, int line)
+{
+  if (!expr) {
+    std::cerr << "Error: " << msg << ", in file " << file 
+      << ", line " << line << "\n";
+    error_found = true;
+  }
+}
+
+#define logError(expr) logError_(expr, #expr, __FILE__, __LINE__)
+
 void errorTest()
 {
   using std::string;
+  error_found = false;
   TaggedUnion<char, double, Foo, string, int> u(8.5);
 
   size_t max_align = alignof(char);
@@ -49,8 +61,8 @@ void errorTest()
   if (max_align < alignof(Foo)) max_align = alignof(Foo);
   if (max_align < alignof(string)) max_align = alignof(string);
   if (max_align < alignof(int)) max_align = alignof(int);
-  assert(max_align == alignof(decltype(u)));
-  assert(sizeof(u) % max_align == 0);
+  logError(max_align == alignof(decltype(u)));
+  logError(sizeof(u) % max_align == 0);
 
   size_t max_size = sizeof(char);
   if (max_size < sizeof(double)) max_size = sizeof(double);
@@ -61,87 +73,89 @@ void errorTest()
   if (expected_size % max_align != 0) {
     expected_size += max_align - expected_size % max_align;
   }
-  assert(expected_size == sizeof(u));
+  logError(expected_size == sizeof(u));
 
 
   // u.reset(short(1)); // compile error
   // u.get<short>() = 7; // exception thrown
   // u.unsafeGet<short>() = 7; // undefined behavior
 
-  assert(u.call(Func()) == DoubleType);
-  assert(u.isType<double>());
-  assert(u.get<double>() == 8.5);
-  assert(u.unsafeGet<double>() == 8.5);
+  logError(u.call(Func()) == DoubleType);
+  logError(u.isType<double>());
+  logError(u.get<double>() == 8.5);
+  logError(u.unsafeGet<double>() == 8.5);
 
   u.reset(5);
-  assert(u.call(Func()) == IntType);
-  assert(u.isType<int>());
-  assert(u.get<int>() == 5);
-  assert(u.unsafeGet<int>() == 5);
+  logError(u.call(Func()) == IntType);
+  logError(u.isType<int>());
+  logError(u.get<int>() == 5);
+  logError(u.unsafeGet<int>() == 5);
 
-  assert(Foo_count == 0);
+  logError(Foo_count == 0);
   u.reset(Foo(2, 3));
-  assert(Foo_count == 1); // incremented in Foo ctor
-  assert(u.call(Func()) == FooType);
-  assert(u.isType<Foo>());
-  assert(u.get<Foo>().a == 2 && u.get<Foo>().b == 3);
-  assert(u.unsafeGet<Foo>().a == 2 && u.unsafeGet<Foo>().b == 3);
+  logError(Foo_count == 1); // incremented in Foo ctor
+  logError(u.call(Func()) == FooType);
+  logError(u.isType<Foo>());
+  logError(u.get<Foo>().a == 2 && u.get<Foo>().b == 3);
+  logError(u.unsafeGet<Foo>().a == 2 && u.unsafeGet<Foo>().b == 3);
 
   u.reset(string("hello world"));
-  assert(Foo_count == 0); // decremented in Foo dtor
-  assert(u.call(Func()) == StringType);
-  assert(u.isType<string>());
-  assert(u.get<string>() == string("hello world"));
-  assert(u.unsafeGet<string>() == string("hello world"));
+  logError(Foo_count == 0); // decremented in Foo dtor
+  logError(u.call(Func()) == StringType);
+  logError(u.isType<string>());
+  logError(u.get<string>() == string("hello world"));
+  logError(u.unsafeGet<string>() == string("hello world"));
 
   u.reset(Foo(5,4));
   auto u2 = std::move(u); // u's Foo.x and Foo.y should be 0 after move
-  assert(u.call(Func()) == FooType);
-  assert(u.isType<Foo>());
-  assert(u.get<Foo>().a == 0 && u.get<Foo>().b == 0);
-  assert(u.unsafeGet<Foo>().a == 0 && u.unsafeGet<Foo>().b == 0);
-  assert(u2.call(Func()) == FooType);
-  assert(u2.isType<Foo>());
-  assert(u2.get<Foo>().a == 5 && u2.get<Foo>().b == 4);
-  assert(u2.unsafeGet<Foo>().a == 5 && u2.unsafeGet<Foo>().b == 4);
+  logError(u.call(Func()) == FooType);
+  logError(u.isType<Foo>());
+  logError(u.get<Foo>().a == 0 && u.get<Foo>().b == 0);
+  logError(u.unsafeGet<Foo>().a == 0 && u.unsafeGet<Foo>().b == 0);
+  logError(u2.call(Func()) == FooType);
+  logError(u2.isType<Foo>());
+  logError(u2.get<Foo>().a == 5 && u2.get<Foo>().b == 4);
+  logError(u2.unsafeGet<Foo>().a == 5 && u2.unsafeGet<Foo>().b == 4);
 
   u = std::move(u2); // u2's Foo.x and Foo.y should be 0 after move
-  assert(u.call(Func()) == FooType);
-  assert(u.isType<Foo>());
-  assert(u.get<Foo>().a == 5 && u.get<Foo>().b == 4);
-  assert(u.unsafeGet<Foo>().a == 5 && u.unsafeGet<Foo>().b == 4);
-  assert(u2.call(Func()) == FooType);
-  assert(u2.isType<Foo>());
-  assert(u2.get<Foo>().a == 0 && u2.get<Foo>().b == 0);
-  assert(u2.unsafeGet<Foo>().a == 0 && u2.unsafeGet<Foo>().b == 0);
+  logError(u.call(Func()) == FooType);
+  logError(u.isType<Foo>());
+  logError(u.get<Foo>().a == 5 && u.get<Foo>().b == 4);
+  logError(u.unsafeGet<Foo>().a == 5 && u.unsafeGet<Foo>().b == 4);
+  logError(u2.call(Func()) == FooType);
+  logError(u2.isType<Foo>());
+  logError(u2.get<Foo>().a == 0 && u2.get<Foo>().b == 0);
+  logError(u2.unsafeGet<Foo>().a == 0 && u2.unsafeGet<Foo>().b == 0);
 
   u2 = u; // u and u2's Foo.x and Foo.y should be 5,4 after assign
-  assert(u.call(Func()) == FooType);
-  assert(u.isType<Foo>());
-  assert(u.get<Foo>().a == 5 && u.get<Foo>().b == 4);
-  assert(u.unsafeGet<Foo>().a == 5 && u.unsafeGet<Foo>().b == 4);
-  assert(u2.call(Func()) == FooType);
-  assert(u2.isType<Foo>());
-  assert(u2.get<Foo>().a == 5 && u2.get<Foo>().b == 4);
-  assert(u2.unsafeGet<Foo>().a == 5 && u2.unsafeGet<Foo>().b == 4);
+  logError(u.call(Func()) == FooType);
+  logError(u.isType<Foo>());
+  logError(u.get<Foo>().a == 5 && u.get<Foo>().b == 4);
+  logError(u.unsafeGet<Foo>().a == 5 && u.unsafeGet<Foo>().b == 4);
+  logError(u2.call(Func()) == FooType);
+  logError(u2.isType<Foo>());
+  logError(u2.get<Foo>().a == 5 && u2.get<Foo>().b == 4);
+  logError(u2.unsafeGet<Foo>().a == 5 && u2.unsafeGet<Foo>().b == 4);
 
   try {
     u.get<int>() = 0; // will throw
-    assert(false);
+    logError(false);
   } catch (...) {  }
 
   try {
     // exception in copy ctor, leaving u in an invalid state
     Foo f(-1, -1);
     u.reset(f); 
-    assert(false);
+    logError(false);
   } catch (...) {  }
 
   try {
     u.call(Func()); // trying to call in an invalid state, so will throw
-    assert(false);
+    logError(false);
   } catch (...) {  }
 
-  std::cout << "All error tests passed\n";
+  if (!error_found) {
+    std::cout << "All error tests passed\n";
+  }
 }
 
