@@ -7,12 +7,19 @@
 
 template <class T, class ...Args>
 class TaggedUnion {
+  template <class U>
+  struct IsNotSame {
+    static const bool value = 
+      !std::is_same<typename std::decay<U>::type, TaggedUnion>::value;
+  };
+
 public:
-  template <class U> 
-  explicit TaggedUnion(const U &val)
-    : tag{GetTag<U, T, Args...>::tag}
+  template <class U,
+    typename std::enable_if<IsNotSame<U>::value>::type* = nullptr>
+  explicit TaggedUnion(U &&val)
+    : tag{GetTag<typename std::remove_reference<U>::type, T, Args...>::tag}
   {
-    new (data) U(val);
+    new (data) typename std::remove_reference<U>::type(std::forward<U>(val));
   }
 
   TaggedUnion(const TaggedUnion &u)
