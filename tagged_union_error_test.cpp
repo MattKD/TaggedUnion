@@ -55,26 +55,45 @@ void logError_(bool expr, const char *msg, const char *file, int line)
 void errorTest()
 {
   using std::string;
+  error_found = false;
 
+  // Foo_count is used to check if dtors are being called
+  logError(Foo_count == 0);
   {
-    // does not compile with move only types (unique_ptr)
-    /*
     using std::unique_ptr;
-    TaggedUnion<unique_ptr<int>, unique_ptr<double>> 
-      u(unique_ptr<int>(new int(3)));
-    auto u2 = std::move(u);
-    */
+    typedef TaggedUnion<unique_ptr<Foo>, Foo, int> UnionT;
+
+    // check if can pass rvalue refs to ctor
+    UnionT u(unique_ptr<Foo>(new Foo(1,2)));
+    logError(Foo_count == 1);
+    unique_ptr<Foo> uptr(new Foo(3, 4));
+    logError(Foo_count == 2);
+    UnionT u2(std::move(uptr));
+    logError(Foo_count == 2);
+
+    // check if can move TaggedUnion with move only types
+    auto u3 = std::move(u); 
+    logError(Foo_count == 2);
+    //auto u3 = u; // can't copy TaggedUnion with move only types
+
+    // check if can pass lvalue ref to ctor
+    Foo f(1,2);
+    logError(Foo_count == 3);
+    UnionT u4(f);
+    logError(Foo_count == 4);
+
+    // check if reset works with rvalue and lvalue refs
+    u.reset(f);
+    logError(Foo_count == 5);
+    u.reset(std::move(f));
+    logError(Foo_count == 5);
 
     // doesnt' compile because move ctor is not noexcept
-    //std::vector<TaggedUnion<unique_ptr<int>, unique_ptr<double>>> us; 
-
-    // check if can compile with lvalue ref to ctor
-    Foo f(1,2);
-    TaggedUnion<char, double, Foo, string, int> u3(f);
+    //std::vector<UnionT> us; 
+    //us.push_back(std::move(u4));
   }
+  logError(Foo_count == 0);
 
-
-  error_found = false;
   TaggedUnion<char, double, Foo, string, int> u(8.5);
 
   size_t max_align = alignof(char);
@@ -164,8 +183,9 @@ void errorTest()
   } catch (...) {  }
 
   try {
-    // exception in copy ctor, leaving u in an invalid state
-    Foo f(-1, -1);
+    // pass by lvalue ref to reset for Foo copy ctor to throw exception,
+    // leaving u in an invalid state
+    Foo f(-1, -1); // -1, -1 will throw in copy ctor
     u.reset(f); 
     logError(false);
   } catch (...) {  }
