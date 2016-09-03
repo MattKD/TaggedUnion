@@ -13,6 +13,17 @@ class TaggedUnion {
       !std::is_same<typename std::decay<U>::type, TaggedUnion>::value;
   };
 
+  template <class T2, class ...Args2>
+  struct NoExcepts {
+    static const bool value = noexcept(T2(std::declval<T2>())) ? 
+      NoExcepts<Args2...>::value : false;
+  };
+
+  template <class T2>
+  struct NoExcepts<T2> {
+    static const bool value = noexcept(T2(std::declval<T2>()));
+  };
+
 public:
   template <class U,
     typename std::enable_if<IsNotSame<U>::value>::type* = nullptr>
@@ -27,7 +38,7 @@ public:
     copy(u, Dummy<T, Args...>()); 
   }
 
-  TaggedUnion(TaggedUnion &&u)
+  TaggedUnion(TaggedUnion &&u) noexcept(NoExcepts<T, Args...>::value)
   {
     move(std::move(u), Dummy<T, Args...>()); 
   }
