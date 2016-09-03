@@ -4,6 +4,8 @@
 #include <memory>
 #include <vector>
 
+using KameUtil::TaggedUnion;
+
 static int Foo_count = 0;
 struct Foo {
   Foo(int a, int b) : a{a}, b{b} { ++Foo_count; }

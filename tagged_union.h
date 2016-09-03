@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <type_traits>
 
+namespace KameUtil {
+
 template <class T, class ...Args>
 class TaggedUnion {
   template <class U>
@@ -243,4 +245,5 @@ private:
   int tag;
 };
 
+} // end namespace KameUtil
 #endif

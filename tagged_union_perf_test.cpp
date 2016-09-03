@@ -3,6 +3,7 @@
 #include <chrono>
 #include <vector>
 
+using KameUtil::TaggedUnion;
 
 struct UnionA {
   int foo(int n) { return n + 1; }
