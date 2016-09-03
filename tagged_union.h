@@ -1,34 +1,18 @@
-#ifndef TAGGED_UNION_H
-#define TAGGED_UNION_H
+#ifndef KAME_UTIL_TAGGED_UNION_H
+#define KAME_UTIL_TAGGED_UNION_H
 
+#include "tagged_union_helper.h"
 #include <utility>
 #include <stdexcept>
-#include <type_traits>
 
 namespace KameUtil {
 
 template <class T, class ...Args>
 class TaggedUnion {
-  template <class U>
-  struct IsNotSame {
-    static const bool value = 
-      !std::is_same<typename std::decay<U>::type, TaggedUnion>::value;
-  };
-
-  template <class T2, class ...Args2>
-  struct NoExcepts {
-    static const bool value = noexcept(T2(std::declval<T2>())) ? 
-      NoExcepts<Args2...>::value : false;
-  };
-
-  template <class T2>
-  struct NoExcepts<T2> {
-    static const bool value = noexcept(T2(std::declval<T2>()));
-  };
-
 public:
   template <class U,
-    typename std::enable_if<IsNotSame<U>::value>::type* = nullptr>
+    typename std::enable_if<!IsSameDecayed<U, TaggedUnion>::value>::type* 
+      = nullptr>
   explicit TaggedUnion(U &&val)
     : tag{GetTag<typename std::remove_reference<U>::type, T, Args...>::tag}
   {
@@ -215,30 +199,6 @@ private:
       release(Dummy<Args2...>());
     }
   }
-
-  template <int size, class T2, class ...Args2>
-  struct MaxSize {
-    static const int value = size < sizeof(T2) ? 
-      MaxSize<sizeof(T2), Args2...>::value : 
-      MaxSize<size, Args2...>::value;
-  };
-
-  template <int size, class T2>
-  struct MaxSize<size, T2> {
-    static const int value = size < sizeof(T2) ? sizeof(T2) : size;
-  };
-
-  template <int align, class T2, class ...Args2>
-  struct MaxAlign {
-    static const int value = align < alignof(T2) ? 
-      MaxAlign<alignof(T2), Args2...>::value : 
-      MaxAlign<align, Args2...>::value;
-  };
-
-  template <int align, class T2>
-  struct MaxAlign<align, T2> {
-    static const int value = align < alignof(T2) ? alignof(T2) : align;
-  };
 
   alignas(MaxAlign<alignof(T), Args...>::value) 
     char data[MaxSize<sizeof(T), Args...>::value];
