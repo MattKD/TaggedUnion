@@ -67,9 +67,9 @@ public:
   }
 
   template <class Func>
-  auto call(Func &&f)
+  auto apply(Func &&f)
   {
-    return call(std::forward<Func>(f), Dummy<T, Args...>());  
+    return apply(std::forward<Func>(f), Dummy<T, Args...>());  
   }
 
   template <class U>
@@ -171,7 +171,7 @@ private:
   }
 
   template <class Func, class T2>
-  auto call(Func &&f, Dummy<T2>)
+  auto apply(Func &&f, Dummy<T2>)
   {
     if (tag == 0) {
       T2 *t2 = (T2*)data;
@@ -182,13 +182,13 @@ private:
   }
 
   template <class Func, class T2, class ...Args2>
-  auto call(Func &&f, Dummy<T2, Args2...>)
+  auto apply(Func &&f, Dummy<T2, Args2...>)
   {
     if (tag == sizeof...(Args2)) {
       T2 *t2 = (T2*)data;
       return f(*t2);
     } else {
-      return call(std::forward<Func>(f), Dummy<Args2...>());
+      return apply(std::forward<Func>(f), Dummy<Args2...>());
     }
   }
 

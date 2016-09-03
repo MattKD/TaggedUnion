@@ -7,7 +7,7 @@
 static int Foo_count = 0;
 struct Foo {
   Foo(int a, int b) : a{a}, b{b} { ++Foo_count; }
-  Foo(Foo &&f) : a{f.a}, b{f.b} 
+  Foo(Foo &&f) noexcept : a{f.a}, b{f.b} 
   { 
     f.a = f.b = 0; 
     ++Foo_count; 
@@ -22,6 +22,11 @@ struct Foo {
 
   ~Foo() { --Foo_count; }
   int a, b;
+};
+
+struct Bar {
+  Bar() { }
+  Bar(Bar &&) { }; // not noexcept
 };
 
 enum TypeResult {
@@ -57,6 +62,13 @@ void errorTest()
   using std::string;
   error_found = false;
 
+  {
+    typedef TaggedUnion<Bar, int> UnionT;
+    auto u = UnionT(Bar());
+    // check if move ctor in not noexcept when at least one type is not
+    logError(!noexcept(UnionT(std::move(u))));
+  }
+
   // Foo_count is used to check if dtors are being called
   logError(Foo_count == 0);
   {
@@ -70,6 +82,9 @@ void errorTest()
     logError(Foo_count == 2);
     UnionT u2(std::move(uptr));
     logError(Foo_count == 2);
+
+    // check if move ctor in noexcept when all types are as well
+    logError(noexcept(UnionT(std::move(u2))));
 
     // check if can move TaggedUnion with move only types
     auto u3 = std::move(u); 
@@ -88,9 +103,9 @@ void errorTest()
     u.reset(std::move(f));
     logError(Foo_count == 5);
 
-    // doesnt' compile because move ctor is not noexcept
-    //std::vector<UnionT> us; 
-    //us.push_back(std::move(u4));
+    // check if can add TaggedUnion with move only types to vector
+    std::vector<UnionT> us; 
+    us.emplace_back(std::move(u4));
   }
   logError(Foo_count == 0);
 
@@ -120,13 +135,13 @@ void errorTest()
   // u.get<short>() = 7; // exception thrown
   // u.unsafeGet<short>() = 7; // undefined behavior
 
-  logError(u.call(Func()) == DoubleType);
+  logError(u.apply(Func()) == DoubleType);
   logError(u.isType<double>());
   logError(u.get<double>() == 8.5);
   logError(u.unsafeGet<double>() == 8.5);
 
   u.reset(5);
-  logError(u.call(Func()) == IntType);
+  logError(u.apply(Func()) == IntType);
   logError(u.isType<int>());
   logError(u.get<int>() == 5);
   logError(u.unsafeGet<int>() == 5);
@@ -134,45 +149,45 @@ void errorTest()
   logError(Foo_count == 0);
   u.reset(Foo(2, 3));
   logError(Foo_count == 1); // incremented in Foo ctor
-  logError(u.call(Func()) == FooType);
+  logError(u.apply(Func()) == FooType);
   logError(u.isType<Foo>());
   logError(u.get<Foo>().a == 2 && u.get<Foo>().b == 3);
   logError(u.unsafeGet<Foo>().a == 2 && u.unsafeGet<Foo>().b == 3);
 
   u.reset(string("hello world"));
   logError(Foo_count == 0); // decremented in Foo dtor
-  logError(u.call(Func()) == StringType);
+  logError(u.apply(Func()) == StringType);
   logError(u.isType<string>());
   logError(u.get<string>() == string("hello world"));
   logError(u.unsafeGet<string>() == string("hello world"));
 
   u.reset(Foo(5,4));
   auto u2 = std::move(u); // u's Foo.x and Foo.y should be 0 after move
-  logError(u.call(Func()) == FooType);
+  logError(u.apply(Func()) == FooType);
   logError(u.isType<Foo>());
   logError(u.get<Foo>().a == 0 && u.get<Foo>().b == 0);
   logError(u.unsafeGet<Foo>().a == 0 && u.unsafeGet<Foo>().b == 0);
-  logError(u2.call(Func()) == FooType);
+  logError(u2.apply(Func()) == FooType);
   logError(u2.isType<Foo>());
   logError(u2.get<Foo>().a == 5 && u2.get<Foo>().b == 4);
   logError(u2.unsafeGet<Foo>().a == 5 && u2.unsafeGet<Foo>().b == 4);
 
   u = std::move(u2); // u2's Foo.x and Foo.y should be 0 after move
-  logError(u.call(Func()) == FooType);
+  logError(u.apply(Func()) == FooType);
   logError(u.isType<Foo>());
   logError(u.get<Foo>().a == 5 && u.get<Foo>().b == 4);
   logError(u.unsafeGet<Foo>().a == 5 && u.unsafeGet<Foo>().b == 4);
-  logError(u2.call(Func()) == FooType);
+  logError(u2.apply(Func()) == FooType);
   logError(u2.isType<Foo>());
   logError(u2.get<Foo>().a == 0 && u2.get<Foo>().b == 0);
   logError(u2.unsafeGet<Foo>().a == 0 && u2.unsafeGet<Foo>().b == 0);
 
   u2 = u; // u and u2's Foo.x and Foo.y should be 5,4 after assign
-  logError(u.call(Func()) == FooType);
+  logError(u.apply(Func()) == FooType);
   logError(u.isType<Foo>());
   logError(u.get<Foo>().a == 5 && u.get<Foo>().b == 4);
   logError(u.unsafeGet<Foo>().a == 5 && u.unsafeGet<Foo>().b == 4);
-  logError(u2.call(Func()) == FooType);
+  logError(u2.apply(Func()) == FooType);
   logError(u2.isType<Foo>());
   logError(u2.get<Foo>().a == 5 && u2.get<Foo>().b == 4);
   logError(u2.unsafeGet<Foo>().a == 5 && u2.unsafeGet<Foo>().b == 4);
@@ -191,7 +206,7 @@ void errorTest()
   } catch (...) {  }
 
   try {
-    u.call(Func()); // trying to call in an invalid state, so will throw
+    u.apply(Func()); // trying to call in an invalid state, so will throw
     logError(false);
   } catch (...) {  }
 

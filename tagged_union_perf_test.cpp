@@ -50,13 +50,13 @@ void taggedUnionPerfTest(int num_objects)
 
   int n = 1;
   for (UnionT &u : unions) {
-    n += u.call(FuncFoo(n));
+    n += u.apply(FuncFoo(n));
   }
 
   auto t2 = std::chrono::high_resolution_clock::now();
 
   for (UnionT &u : unions) {
-    u.call(FuncDelete());
+    u.apply(FuncDelete());
   }
   std::chrono::duration<double, std::milli> duration = t2 - t1;
   cout << "taggedUnionPerfTest: " << duration.count() << "ms\n"; 
