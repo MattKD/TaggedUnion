@@ -112,6 +112,15 @@ void errorTest()
   logError(Foo_count == 0);
 
   TaggedUnion<char, double, Foo, string, int> u(8.5);
+  logError(u.isValid());
+
+  // These won't compile because implicit conversions don't work
+  //TaggedUnion<char, double, Foo, string, int> u(8.5f);
+  //TaggedUnion<char, double, Foo, string, int> u("hello world");
+  //TaggedUnion<char, double, Foo, string, int> u(5u);
+  //u.reset(8.5f);
+  //u.reset("hello world");
+  //u.reset(5u);
 
   size_t max_align = alignof(char);
   if (max_align < alignof(double)) max_align = alignof(double);
@@ -131,7 +140,6 @@ void errorTest()
     expected_size += max_align - expected_size % max_align;
   }
   logError(expected_size == sizeof(u));
-
 
   // u.reset(short(1)); // compile error
   // u.get<short>() = 7; // exception thrown
@@ -165,6 +173,8 @@ void errorTest()
 
   u.reset(Foo(5,4));
   auto u2 = std::move(u); // u's Foo.x and Foo.y should be 0 after move
+  logError(u.isValid());
+  logError(u2.isValid());
   logError(u.apply(Func()) == FooType);
   logError(u.isType<Foo>());
   logError(u.get<Foo>().a == 0 && u.get<Foo>().b == 0);
@@ -175,6 +185,8 @@ void errorTest()
   logError(u2.unsafeGet<Foo>().a == 5 && u2.unsafeGet<Foo>().b == 4);
 
   u = std::move(u2); // u2's Foo.x and Foo.y should be 0 after move
+  logError(u.isValid());
+  logError(u2.isValid());
   logError(u.apply(Func()) == FooType);
   logError(u.isType<Foo>());
   logError(u.get<Foo>().a == 5 && u.get<Foo>().b == 4);
@@ -198,6 +210,7 @@ void errorTest()
     u.get<int>() = 0; // will throw
     logError(false);
   } catch (...) {  }
+  logError(u.isValid());
 
   try {
     // pass by lvalue ref to reset for Foo copy ctor to throw exception,
@@ -206,11 +219,16 @@ void errorTest()
     u.reset(f); 
     logError(false);
   } catch (...) {  }
+  logError(!u.isValid());
 
   try {
     u.apply(Func()); // trying to call in an invalid state, so will throw
     logError(false);
   } catch (...) {  }
+  logError(!u.isValid());
+
+  u.reset(2);
+  logError(u.isValid());
 
   if (!error_found) {
     std::cout << "All error tests passed\n";

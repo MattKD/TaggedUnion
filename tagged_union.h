@@ -90,6 +90,8 @@ public:
     return *u;
   }
 
+  bool isValid() const { return tag >= 0; }
+
 private:
   template <class U, class ...Args2>
   struct GetTag {
